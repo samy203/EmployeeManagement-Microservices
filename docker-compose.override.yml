@@ -1,0 +1,51 @@
+version: '1.0'
+
+services:
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "S3cur3P@ssW0rd!"
+      ACCEPT_EULA: "Y"
+
+  mongo:
+    image: mongo
+    ports:
+      - 27017:27017
+
+  redis:
+    image: redis:alpine
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - 15672:15672
+
+  department-api:
+    image: ${REGISTRY:-officemanagement}/department.api:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Services/Department/Department.API/Dockerfile
+    depends_on:
+      - rabbitmq
+      - mongo
+    ports:
+      - 5100:80
+    environment:
+      "DATABASE_NAME": "DepartmentsDB"
+      "DEPARTMENTS_COLLECTION_NAME": "departments"
+      #shouldnt save conn strings in docker compose and without auth, but its just for development purposes.
+      "CONNECTION_STRING": mongodb://mongo:27017
+
+  employee-api:
+    image: ${REGISTRY:-officemanagement}/employee.api:${PLATFORM:-linux}-${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Services/Employee/Employee.API/Dockerfile
+    depends_on:
+      - rabbitmq
+      - mssql
+    ports:
+      - 5101:80
